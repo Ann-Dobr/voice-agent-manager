@@ -1,0 +1,961 @@
+{
+  "name": "Mk_Test (AI)",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message",
+          "callback_query"
+        ],
+        "additionalFields": {
+          "download": true
+        }
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1152,
+        192
+      ],
+      "id": "3ce1c824-ed9c-4c8d-8db3-6a1c5907f72f",
+      "name": "Telegram Trigger",
+      "webhookId": "40e12c7b-258e-4e37-9aee-f31aa0b76856",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_TELEGRAM_CREDENTIAL_ID",
+          "name": "mk_test_bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message?.text || $json.callback_query?.data }}",
+                    "rightValue": "/start",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "bab3ba6e-ee8a-4091-851e-f5052b1a32ee"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "0"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "67033e47-061c-4bea-9efa-53f67ad6bc8c",
+                    "leftValue": "={{ $json.message?.text || $json.callback_query?.data }}",
+                    "rightValue": "🤖 Мои агенты",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "1"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "a8328326-590c-4406-ab47-9862e536c619",
+                    "leftValue": "={{ $json.callback_query?.data }}",
+                    "rightValue": "edit:",
+                    "operator": {
+                      "type": "string",
+                      "operation": "startsWith"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "ignoreCase": true
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -416,
+        160
+      ],
+      "id": "3967816f-d475-4b2d-8b97-dcbcf6d37c85",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT agent_name FROM voice_agents \nWHERE tg_user_id = {{ $('Telegram Trigger').item.json.message.from.id }}\nAND agent_name != '/start';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        -176,
+        80
+      ],
+      "id": "aba08ea2-6aeb-438f-9399-8f9d4b748fc1",
+      "name": "Execute a SQL query1",
+      "alwaysOutputData": true,
+      "credentials": {
+        "mySql": {
+          "id": "YOUR_MYSQL_CREDENTIAL_ID",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO voice_agents (tg_user_id, agent_name) \nVALUES ('{{ $node[\"Telegram Trigger\"].json.message.from.id }}', '{{ $node[\"Telegram Trigger\"].json.message.text }}')\nON DUPLICATE KEY UPDATE \nagent_name = IF(VALUES(agent_name) = '/start', agent_name, VALUES(agent_name));",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        -144,
+        -112
+      ],
+      "id": "957a6daf-de84-49ff-95ed-c277f97b60d7",
+      "name": "Execute a SQL query2",
+      "credentials": {
+        "mySql": {
+          "id": "YOUR_MYSQL_CREDENTIAL_ID",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/botYOUR_TELEGRAM_BOT_TOKEN/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": {{ $node[\"Telegram Trigger\"].json[\"message\"][\"chat\"][\"id\"] }},\n  \"text\": \"✨ **Привет! Я твой AI-ассистент.**\\n\\nЯ помогу тебе запустить собственных агентов. \\n\\n👇 **Нажми на кнопку в меню, чтобы начать:**\",\n  \"parse_mode\": \"Markdown\",\n  \"reply_markup\": {\n    \"keyboard\": [\n      [\n        {\"text\": \"🪄 Создать агента\"},\n        {\"text\": \"🤖 Мои агенты\"}\n      ]\n    ],\n    \"resize_keyboard\": true\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        48,
+        -112
+      ],
+      "id": "6e93f58a-9c8c-4a60-b6eb-e75f9ecba7f8",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "{{ $json.query }}",
+        "options": {
+          "queryReplacement": "={{ $json.params }}"
+        }
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        496,
+        416
+      ],
+      "id": "6e6e6a10-2c03-4103-821e-1be5301a9f47",
+      "name": "Execute a SQL query3",
+      "credentials": {
+        "mySql": {
+          "id": "YOUR_MYSQL_CREDENTIAL_ID",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.elevenlabs.io/v1/convai/agents/settings",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "xi-api-key",
+              "value": "YOUR_ELEVENLABS_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "\"Test prompt update\"",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        880,
+        592
+      ],
+      "id": "b3919285-d7f3-4394-b0ea-083fa15503fb",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Текущие данные из Telegram для анализа:\n- Действие пользователя: {{ $json.callback_query ? \"Нажал инлайн-кнопку под сообщением\" : \"Прислал текстовое сообщение\" }}\n- Технические данные нажатой кнопки (callback_data): {{ $json.callback_query?.data || \"Кнопка не нажималась\" }}\n- Текст сообщения, к которому была прикреплена кнопка: {{ $json.callback_query?.message?.text || \"Сообщения с кнопкой нет\" }}\n- Чистый текст от пользователя (ввод руками или команда): {{ $json.message?.text || \"\" }}\n\nИНСТРУКЦИЯ:\nВнимательно проанализируй эти данные, сопоставь их с текущим контекстом твоей памяти (Memory) и строго следуй Сценариям из твоего Системного промпта. Если требуется выдать JSON — выдавай только чистый JSON без лишнего текста вокруг.",
+        "options": {
+          "systemMessage": "Ты — технический диспетчер системы ElevenLabs. \nТвоя главная задача — переводить действия пользователя в структурированные команды JSON для базы данных, либо вести красивый технический диалог.\n\nТвой рабочий алгоритм строго разделен на сценарии. Выбирай строго ОДИН подходящий сценарий:\n\n### СЦЕНАРИЙ 1: СОЗДАНИЕ НОВОГО АГЕНТА (Режим \"Имя\")\nЕсли пользователь прислал простой текст, и из контекста твоей памяти (Memory) понятно, что прошлым шагом ему было отправлено сообщение с просьбой прислать название для нового агента:\n1. ПРАВИЛО ИМЕНИ: Имя должно быть строго ОДНИМ словом, без пробелов. Если в сообщении есть пробелы — прекрати работу, не выдавай JSON и ответь текстом: «Упс, имя агента не должно содержать пробелов! Перепиши его, пожалуйста, слитно или через нижнее подчёркивание.»\n2. ПРАВИЛО ОЧИСТКИ: Если имя в одно слово, полностью вырежи из него любые эмодзи, смайлики и знаки препинания (точки, кавычки, скобки). Разрешены только буквы, цифры и \"_\".\n3. Сформируй ответ СТРОГО в формате JSON:\n{\n  \"intent\": \"create\",\n  \"agent_name\": \"ОЧИЩЕННОЕ_ИМЯ_АГЕНТА\"\n}\n\n### СЦЕНАРИЙ 2: НАЖАТИЕ ИНЛАЙН-КНОПКИ ОБНОВЛЕНИЯ (Режим \"Команда\")\nЕсли пришёл сигнал нажатия инлайн-кнопки (технические данные callback_data содержат: prompt:, greeting: или kb:):\n1. Определи имя существующего агента. Оно находится в тексте сообщения строго после фразы \"Управление агентом: \". Очисти его от лишних знаков.\n2. Определи параметр обновления (type): если callback содержит \"prompt\" -> \"prompt\", если \"greeting\" -> \"greeting\", if \"kb\" -> \"kb\".\n3. Сформируй ответ СТРОГО в формате JSON, чтобы система поняла, какой параметр мы готовимся менять:\n{\n  \"intent\": \"prepare_update\",\n  \"type\": \"ПАРАМЕТР\",\n  \"agent_name\": \"ИМЯ_АГЕНТА\"\n}\n4. ОДНОВРЕМЕННО с генерацией JSON, выведи текстовый ответ для пользователя строго в формате HTML. Если в тексте или именах агентов есть нижние подчеркивания \"_\" или знаки \"&\", оставь их как есть — в HTML они безопасны. Не используй знаки < и > вне тегов!\nВыводи текст в зависимости от параметра:\n- Для prompt: «📝 Напиши, какими навыками или характером должен обладать твой агент.»\n- Для greeting: «👋 Напиши новый текст приветствия, который агент будет говорить в самом начале звонка.»\n- Для kb: «📚 Пришли текст, правила или документы, которые нужно добавить в базу знаний агента.»\n\nДополнительно в конце любого из этих сообщений новой строкой добавь:\n<i>ℹ️ Наш ИИ-ассистент автоматически оптимизирует и отшлифует твои настройки, чтобы повысить качество работы голосового агента в ElevenLabs.</i>\n\n### СЦЕНАРИЙ 3: ВВОД НОВОГО ТЕКСТА ДЛЯ АГЕНТА (Режим \"Данные\")\nЕсли пришёл обычный текст, и в твоей памяти (Memory) зафиксировано, что прошлым шагом происходила подготовка к обновлению (был выдан \"prepare_update\"):\n1. ТЕБЕ КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО ЗАДАВАТЬ УТОЧНЯЮЩИЕ ВОПРОСЫ ИЛИ ВЕСТИ ДИАЛОГ.\n2. Возьми имя агента (agent_name) и тип параметра (type) из истории прошлых шагов памяти.\n3. Возьми присланный текст пользователя за основу, автоматически оптимизируй его под стандарты ElevenLabs.\n4. Сформируй ответ СТРОГО в формате JSON и ничего больше не пиши. Текст внутри \"content\" должен быть чистой строкой:\n{\n  \"intent\": \"update\",\n  \"type\": \"ТИП_ПАРАМЕТРА_ИЗ_ПАМЯТИ\",\n  \"content\": \"Твой профессионально улучшенный текст\",\n  \"agent_name\": \"ИМЯ_АГЕНТА_ИЗ_ПАМЯТИ\"\n}\n\n### СЦЕНАРИЙ 4: ГЛАВНОЕ МЕНЮ И ДИАЛОГ\n1. Если пользователь нажал кнопку меню \"🪄 Создать агента\" или написал этот текст руками:\n   НЕ генерируй никакой JSON! Ответь пользователю строго следующим текстом (БЕЗ жирного шрифта, звёздочек или косых черт):\n   Супер! Пришли название для нового агента одним словом. Используй только буквы, цифры и нижнее подчёркивание.\n   \n2. Если пользователь нажал кнопку меню \"🤖 Мои агенты\":\n   Полное молчание! Не генерируй JSON и ничего не пиши в ответ. Этот запрос обрабатывается другим узлом.\n   \n3. Если пользователь просто общается или задаёт вопросы вне контекста: \n   Вежливо общайся текстом и напомни, что ты помогаешь настраивать агентов ElevenLabs. Если просят список — отправь их к кнопке \"Мои агенты\".\n\n### СТРОГОЕ ПРАВИЛО ПРИОРИТЕТА:\nНажатие любой новой кнопки меню (например, \"🪄 Создать агента\" или \"🤖 Мои агенты\") мгновенно сбрасывает и аннулирует любое ожидание текста из прошлых шагов. Кнопка всегда имеет наивысший приоритет.",
+          "maxIterations": 1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -192,
+        416
+      ],
+      "id": "6601dbd1-78b4-41a8-ab97-a054b31a7e9e",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "gpt-4o"
+        },
+        "builtInTools": {},
+        "options": {
+          "maxTokens": 500,
+          "temperature": 0.7
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -224,
+        592
+      ],
+      "id": "a33727bd-1011-444f-91f9-8540fd37912f",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "YOUR_OPENAI_CREDENTIAL_ID",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.callback_query.message.chat.id }}",
+        "text": "=🤖 Управление агентом: {{ $('Telegram Trigger').item.json.callback_query?.data?.split(':')[1] }}\n\nЧто именно вы хотите изменить?",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "📝 Изменить промпт",
+                    "additionalFields": {
+                      "callback_data": "=prompt:{{ $('Telegram Trigger').item.json.callback_query?.data?.split(':')[1] }}"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "👋 Изменить приветствие",
+                    "additionalFields": {
+                      "callback_data": "=greeting:{{ $('Telegram Trigger').item.json.callback_query?.data?.split(':')[1] }}"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "🗂️ Обновить базу знаний",
+                    "additionalFields": {
+                      "callback_data": "=kb:{{ $('Telegram Trigger').item.json.callback_query?.data?.split(':')[1] }}"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -176,
+        224
+      ],
+      "id": "724c65a9-b797-4953-bf4d-a75c7b77e577",
+      "name": "Send a text (список агентов)",
+      "webhookId": "f996e1df-469b-4a0f-81c3-48dc5277748e",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_TELEGRAM_CREDENTIAL_ID",
+          "name": "mk_test_bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "=={{ $('Telegram Trigger').item.json.message?.chat?.id || $('Telegram Trigger').item.json.callback_query?.message?.chat?.id }}",
+        "contextWindowLength": 12
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -96,
+        624
+      ],
+      "id": "6210f4b4-9fc3-4fc3-87f8-36840f03bb99",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Забираем данные из входящего элемента\nconst item = $input.item;\nconst rawOutput = item.json.output;\n\n// 2. Вытаскиваем Telegram ID пользователя из триггера\nlet tgUserId = null;\ntry {\n    // Дотягиваемся до самого первого узла Telegram Trigger\n    const tgTrigger = $('Telegram Trigger').item.json;\n    tgUserId = tgTrigger.message?.from?.id || tgTrigger.callback_query?.from?.id || null;\n} catch (e) {\n    tgUserId = null;\n}\n\n// 3. Чистим строку от маркдауна и парсим JSON\nlet cleanString = typeof rawOutput === 'string' ? rawOutput : '';\ncleanString = cleanString.replace(/```json/g, '').replace(/```/g, '').trim();\n\nlet parsedData;\ntry {\n    parsedData = JSON.parse(cleanString);\n} catch (e) {\n    parsedData = { intent: 'unknown', agent_name: 'error' };\n}\n\nlet resultQuery = '';\nlet resultParams = [];\n\n// --- СЦЕНАРИЙ 1: СОЗДАНИЕ ---\n// Добавляем tg_user_id в INSERT, чтобы узел \"Мои агенты\" его видел\nif (parsedData.intent === 'create') {\n    resultQuery = `INSERT INTO voice_agents (agent_name, prompt, greeting, kb_content, tg_user_id) VALUES ($1, $2, $3, $4, $5)`;\n    resultParams = [\n        (parsedData.agent_name || \"Без имени\").trim(),\n        \"Ты — полезный ИИ-ассистент.\",\n        \"Привет! Я твой новый агент.\",\n        \"Пустая база знаний\",\n        tgUserId\n    ];\n}\n\n// --- СЦЕНАРИЙ 2: ОБНОВЛЕНИЕ ---\nelse if (parsedData.intent === 'update') {\n    let column = 'prompt';\n    switch (parsedData.type) {\n        case 'prompt': column = 'prompt'; break;\n        case 'greeting': column = 'greeting'; break;\n        case 'kb': column = 'kb_content'; break;\n    }\n    \n    let rawName = parsedData.agent_name || \"\";\n    let finalAgentName = rawName.includes(':') ? rawName.split(':')[1].trim() : rawName.trim();\n    \n    resultQuery = `UPDATE voice_agents SET ${column} = $1 WHERE agent_name = $2`;\n    resultParams = [(parsedData.content || \"\").trim(), finalAgentName];\n}\n\nif (resultQuery !== '') {\n    return [{\n        json: {\n            query: resultQuery,\n            params: resultParams,\n            agentName: parsedData.intent === 'create' \n                ? resultParams[0] \n                : resultParams[1],\n          intent: parsedData.intent\n        }\n    }];\n}\n\nreturn [];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        416
+      ],
+      "id": "f6e37abf-1b5e-4179-905b-71baf257269c",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "3d391611-8f50-4ac1-9e15-04adcad66179",
+              "leftValue": "={{ $input.all().filter(item => item.json.agent_name != null).length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        0,
+        80
+      ],
+      "id": "aea37b68-b21a-4d2c-931b-8b18c3dbc43b",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "3d391611-8f50-4ac1-9e15-04adcad66179",
+              "leftValue": "={{ $('Code in JavaScript').item.json.intent }}",
+              "rightValue": "create",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        672,
+        416
+      ],
+      "id": "1fe2b7c3-3015-4ff6-a045-09bb783954bb",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/botYOUR_TELEGRAM_BOT_TOKEN/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"{{ $('Telegram Trigger').item.json.message?.from?.id || $('Telegram Trigger').item.json.callback_query?.from?.id }}\",\n  \"text\": \"*📋 Список твоих голосовых агентов:*\\n\\nНажми на нужного агента ниже, чтобы перейти к его настройкам:\",\n  \"parse_mode\": \"Markdown\",\n  \"reply_markup\": {\n    \"inline_keyboard\": {{ JSON.stringify($input.all().map(item => [\n      {\n        \"text\": \"⚙️ \" + item.json.agent_name,\n        \"callback_data\": \"edit:\" + item.json.agent_name\n      }\n    ])) }}\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        192,
+        64
+      ],
+      "id": "70f0e7ca-1ab5-416e-9e1c-2af882df7d36",
+      "name": "HTTP Request2",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d9667480-944f-4ef0-b17d-e8f20bcc6ef6",
+              "leftValue": "={{ $json.message.voice?.file_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "8127260b-bd86-4c06-983a-a4de46028e26",
+              "leftValue": "={{ $json.message.video_note?.file_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -992,
+        192
+      ],
+      "id": "f5b3294d-2b0c-4e19-8aa7-2cb94fa259c8",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        -704,
+        -32
+      ],
+      "id": "dc340f16-b443-4cb5-9135-c798a79b0f0f",
+      "name": "Transcribe a recording",
+      "credentials": {
+        "openAiApi": {
+          "id": "YOUR_OPENAI_CREDENTIAL_ID",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.message?.voice?.file_id || $json.message?.video_note?.file_id }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -864,
+        -32
+      ],
+      "id": "f4a975f8-22d5-485d-81da-5bc6e3cb6de3",
+      "name": "Get a file",
+      "webhookId": "d37663b3-ca78-452b-b5f0-bbb608bf191c",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_TELEGRAM_CREDENTIAL_ID",
+          "name": "mk_test_bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a95ae619-060c-4f55-a3a7-62dbaae56d93",
+              "name": "message.text",
+              "value": "=={{ $json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -560,
+        -32
+      ],
+      "id": "bc41a17f-1094-40de-9ecc-babbd057fc1a",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "3626e27a-d841-4f9f-a18a-09cf28c3bc3b",
+              "leftValue": "={{ (typeof $json.output === 'object' && $json.output !== null && 'intent' in $json.output) || (typeof $json.output === 'string' && $json.output.includes('{') && $json.output.includes('\"intent\"')) }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "d63956f7-22cc-4a54-8b75-a2d10151aa28",
+              "leftValue": "={{ $json.output_json?.intent || JSON.parse($json.output.replace(/```json/g, '').replace(/```/g, '')).intent }}",
+              "rightValue": "(update|create)",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        112,
+        432
+      ],
+      "id": "121b0730-e354-4fe2-b41d-9f561c0337dc",
+      "name": "If3"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.from.id }}",
+        "text": "=Настройки для агента {{ $('Code in JavaScript').item.json.agentName.replace('_', ' ') }} успешно обновлены и записаны в базу!",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1072,
+        608
+      ],
+      "id": "64e8193c-ab96-4056-b07b-f5a8110d0034",
+      "name": "Send a text (после изменения)",
+      "webhookId": "a4064b09-8763-4d34-bbf1-55bb028cf8bc",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_TELEGRAM_CREDENTIAL_ID",
+          "name": "mk_test_bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message?.chat?.id || $('Telegram Trigger').item.json.callback_query?.from?.id }}",
+        "text": "=Агент {{ $('Code in JavaScript').item.json.agentName.replace('_', ' ') }} успешно создан! 🎉",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1040,
+        320
+      ],
+      "id": "f9582021-d8c0-43c2-b1db-6155e1afd3a3",
+      "name": "Send a text (новый агент)",
+      "webhookId": "a0445487-b00b-4edd-b372-c5cdd4f96a33",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_TELEGRAM_CREDENTIAL_ID",
+          "name": "mk_test_bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message?.chat?.id || $('Telegram Trigger').item.json.callback_query?.message?.chat?.id }}",
+        "text": "Упс! Пока что тут пусто... Самое время нажать Создать агента!",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        160,
+        240
+      ],
+      "id": "5e9c1d64-e8bc-4745-9449-e801fe25660e",
+      "name": "Send a text (ответ при ошибке)",
+      "webhookId": "8fb51e7d-02b8-40dd-a12d-5e8d13aa67e7",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_TELEGRAM_CREDENTIAL_ID",
+          "name": "mk_test_bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message?.chat.id || $('Telegram Trigger').item.json.callback_query?.from.id }}",
+        "text": "={{ $json.output.replace(/\\{[\\s\\S]*?\\}/g, '').replace(/```json|```/g, '').trim() }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        336,
+        640
+      ],
+      "id": "cac5f451-f11b-44c3-82bf-194af8669de2",
+      "name": "Send a text (ответ на создание агента)",
+      "webhookId": "8b06ea65-4b3c-425b-bbca-50de026cacea",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_TELEGRAM_CREDENTIAL_ID",
+          "name": "mk_test_bot"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute a SQL query1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text (список агентов)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query1": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query2": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query3": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "If3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Send a text (после изменения)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text (ответ при ошибке)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Send a text (новый агент)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "Get a file",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a file": {
+      "main": [
+        [
+          {
+            "node": "Transcribe a recording",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe a recording": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If3": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text (ответ на создание агента)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "de62f0bb-2487-4a02-b058-1b4c156648ba",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_INSTANCE_ID"
+  },
+  "id": "l88My2hklyLmyQT2",
+  "tags": []
+}
